@@ -39,6 +39,8 @@ const App = () => {
   const [authMode, setAuthMode] = useState('login'); // 'login' or 'signup'
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [toastMessage, setToastMessage] = useState('');
+  const toastTimerRef = React.useRef(null);
 
   // Fetch initial data
   useEffect(() => {
@@ -116,6 +118,36 @@ const App = () => {
     }
   };
 
+  const showToast = (message) => {
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+    }
+    setToastMessage(message);
+    toastTimerRef.current = setTimeout(() => setToastMessage(''), 2000);
+  };
+
+  const sendReview = async (productId, rating) => {
+    try {
+      const sentiment = rating >= 4 ? 'positive' : rating <= 2 ? 'negative' : 'neutral';
+      await fetch(`${API_BASE}/events`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: currentUser,
+          productId,
+          eventType: 'review',
+          rating,
+          sentiment
+        })
+      });
+
+      fetchRecommendations();
+      showToast('Thanks for your feedback');
+    } catch (error) {
+      console.error('Failed to submit review:', error);
+    }
+  };
+
   const addToCart = (product) => {
     setCart(prev => {
       const existing = prev.find(item => item.id === product.id);
@@ -155,9 +187,11 @@ const App = () => {
   return (
     <ShopContext.Provider value={{
       currentUser, setCurrentUser,
+      showToast,
       cart, cartTotal, cartCount,
       addToCart, removeFromCart, updateQuantity,
       trackEvent,
+      sendReview,
       recommendations,
       userProfile,
       loading
@@ -220,6 +254,21 @@ const App = () => {
             onTrackEvent={trackEvent}
           />
         </main>
+
+        {/* Toast */}
+        <AnimatePresence>
+          {toastMessage && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="fixed bottom-24 right-6 bg-white/90 border border-[var(--line)] shadow-[var(--shadow-2)] text-[var(--ink-1)] px-4 py-3 rounded-full flex items-center gap-2 z-50"
+            >
+              <span className="text-[var(--brand-3)]">✓</span>
+              <span className="text-sm font-medium">{toastMessage}</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Floating AI Learning Indicator */}
         {loading && <AILearningIndicator />}
@@ -395,10 +444,17 @@ const getCurrentUserData = () => {
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
-                    className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-[var(--line)] overflow-hidden z-50"
+                    className="absolute right-0 mt-2 w-[90vw] sm:w-80 bg-white rounded-xl shadow-xl border border-[var(--line)] overflow-hidden z-50"
                   >
-                    <div className="p-4 border-b border-gray-100">
+                    <div className="p-4 border-b border-gray-100 flex items-center justify-between">
                       <h3 className="font-semibold text-lg">Your Cart</h3>
+                      <button
+                        onClick={() => setShowCart(false)}
+                        className="h-8 w-8 rounded-full border border-[var(--line)] bg-white/80 hover:bg-[var(--surface-2)] flex items-center justify-center"
+                        aria-label="Close cart"
+                      >
+                        ✕
+                      </button>
                     </div>
                     
                     {cart.length === 0 ? (
@@ -410,27 +466,34 @@ const getCurrentUserData = () => {
                       <>
                         <div className="max-h-96 overflow-auto">
                           {cart.map(item => (
-                            <div key={item.id} className="flex items-center gap-3 p-3 border-b border-gray-50 hover:bg-[var(--surface-2)]">
-                             
-                              <img src={item.image} alt="" />
-                              <div className="flex-1">
-                                <p className="font-medium">{item.name}</p>
-                                <p className="text-sm text-gray-500">₹{item.price}</p>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <button
-                                  onClick={() => updateQuantity(item.id, -1)}
-                                  className="w-6 h-6 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center"
-                                >
-                                  -
-                                </button>
-                                <span className="w-6 text-center">{item.quantity}</span>
-                                <button
-                                  onClick={() => updateQuantity(item.id, 1)}
-                                  className="w-6 h-6 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center"
-                                >
-                                  +
-                                </button>
+                            <div key={item.id} className="p-3 border-b border-gray-50 hover:bg-[var(--surface-2)]">
+                              <div className="grid grid-cols-[64px_1fr_auto] items-center gap-3">
+                                <div className="h-16 w-16 rounded-xl bg-white/70 border border-[var(--line)] flex items-center justify-center overflow-hidden">
+                                  <ProductImage
+                                    value={item.image}
+                                    emojiClassName="text-3xl"
+                                    imgClassName="h-16 w-16 object-cover"
+                                  />
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="font-medium text-[var(--ink-1)] truncate">{item.name}</p>
+                                  <p className="text-sm text-[var(--ink-2)]">Rs {item.price}</p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={() => updateQuantity(item.id, -1)}
+                                    className="w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center"
+                                  >
+                                    -
+                                  </button>
+                                  <span className="w-6 text-center">{item.quantity}</span>
+                                  <button
+                                    onClick={() => updateQuantity(item.id, 1)}
+                                    className="w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center"
+                                  >
+                                    +
+                                  </button>
+                                </div>
                               </div>
                             </div>
                           ))}
@@ -678,11 +741,14 @@ const RecommendationsSection = ({ recommendations, loading, onAddToCart, onTrack
                   <ProductImage
                     value={product.image}
                     emojiClassName="text-6xl mb-2 block group-hover:scale-110 transition-transform"
-                    imgClassName="mx-auto h-16 w-16 object-contain mb-2 block group-hover:scale-110 transition-transform"
+                    imgClassName="mx-auto h-24 w-24 object-contain mb-2 block group-hover:scale-110 transition-transform"
                   />
                   <h3 className="font-medium text-[var(--ink-1)]">{product.name}</h3>
                   <p className="text-sm text-[var(--ink-2)] mb-2">₹{product.price}</p>
                   <p className="text-xs text-[var(--brand-2)] mb-2">{product.reason}</p>
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <FeedbackButtons productId={product.id} compact />
+                  </div>
                 </div>
                 <motion.button
                   whileHover={{ scale: 1.05 }}
@@ -724,11 +790,14 @@ const ProductsGrid = ({ products, onAddToCart, onTrackEvent }) => {
             <div className="p-3 text-center">
               <ProductImage
                 value={product.image}
-                emojiClassName="text-4xl mb-2 block"
-                imgClassName="mx-auto h-10 w-10 object-contain mb-2 block"
+                emojiClassName="text-5xl mb-2 block"
+                imgClassName="mx-auto h-16 w-16 object-contain mb-2 block"
               />
               <h3 className="font-medium text-sm text-[var(--ink-1)]">{product.name}</h3>
               <p className="text-sm font-bold text-[var(--brand-1)] mt-1">₹{product.price}</p>
+              <div className="mt-2">
+                <FeedbackStars productId={product.id} />
+              </div>
             </div>
             <motion.button
               whileHover={{ scale: 1.02 }}
@@ -770,6 +839,52 @@ const AILearningIndicator = () => {
 };
 
 // ===========================================
+// FEEDBACK COMPONENTS
+// ===========================================
+const FeedbackButtons = ({ productId, compact = false }) => {
+  const { sendReview } = useShop();
+
+  return (
+    <div className={`inline-flex items-center ${compact ? 'gap-2' : 'gap-3'}`}>
+      <button
+        onClick={() => sendReview(productId, 5)}
+        className="px-2 py-1 rounded-full text-xs bg-[rgba(135,179,141,0.15)] text-[var(--brand-3)] border border-[rgba(135,179,141,0.35)] hover:bg-[rgba(135,179,141,0.25)] transition"
+        title="I like this"
+      >
+        👍
+      </button>
+      <button
+        onClick={() => sendReview(productId, 1)}
+        className="px-2 py-1 rounded-full text-xs bg-[rgba(242,104,74,0.15)] text-[var(--brand-1)] border border-[rgba(242,104,74,0.35)] hover:bg-[rgba(242,104,74,0.25)] transition"
+        title="Not interested"
+      >
+        👎
+      </button>
+    </div>
+  );
+};
+
+const FeedbackStars = ({ productId }) => {
+  const { sendReview } = useShop();
+  const stars = [1, 2, 3, 4, 5];
+
+  return (
+    <div className="flex items-center justify-center gap-1">
+      {stars.map((star) => (
+        <button
+          key={star}
+          onClick={() => sendReview(productId, star)}
+          className="text-sm text-[var(--brand-2)] hover:text-[var(--brand-1)] transition"
+          title={`Rate ${star} star${star > 1 ? 's' : ''}`}
+        >
+          ★
+        </button>
+      ))}
+    </div>
+  );
+};
+
+// ===========================================
 // AUTH MODAL
 // ===========================================
 const AuthModal = ({ mode, setMode, onClose, onSuccess }) => {
@@ -800,6 +915,8 @@ const AuthModal = ({ mode, setMode, onClose, onSuccess }) => {
     );
   };
 
+  const { showToast } = useShop();
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -818,9 +935,9 @@ const AuthModal = ({ mode, setMode, onClose, onSuccess }) => {
         
         const data = await res.json();
         if (data.success) {
+          showToast('Signup successful');
           onSuccess(data.user.id);
         }
-        alert("Signup Successfull")
       } catch (error) {
         console.error('Signup failed:', error);
       }
@@ -838,6 +955,7 @@ const AuthModal = ({ mode, setMode, onClose, onSuccess }) => {
         
         const data = await res.json();
         if (data.success) {
+          showToast('Login successful');
           onSuccess(data.user.id);
         }
       } catch (error) {
@@ -973,3 +1091,6 @@ const AuthModal = ({ mode, setMode, onClose, onSuccess }) => {
 // EXPORT
 // ===========================================
 export default App;
+
+
+
