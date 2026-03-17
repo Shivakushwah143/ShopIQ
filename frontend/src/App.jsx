@@ -352,9 +352,9 @@ const getCurrentUserData = () => {
   // if logged in → return dynamic user
   return {
     id: loggedInUser.id || "user_logged",
-    name: loggedInUser.username || "User",
+    name: loggedInUser.name || loggedInUser.username || "User",
     email: loggedInUser.email || "",
-    avatar: "🧑",
+    avatar: loggedInUser.avatar || (loggedInUser.name ? loggedInUser.name.charAt(0).toUpperCase() : "U"),
     color: "bg-blue-500"
   };
 };
@@ -1181,6 +1181,7 @@ const AuthModal = ({ mode, setMode, onClose, onSuccess }) => {
         
         const data = await res.json();
         if (data.success) {
+          localStorage.setItem('user', JSON.stringify(data.user));
           showToast('Signup successful');
           onSuccess(data.user.id);
         }
@@ -1201,6 +1202,7 @@ const AuthModal = ({ mode, setMode, onClose, onSuccess }) => {
         
         const data = await res.json();
         if (data.success) {
+          localStorage.setItem('user', JSON.stringify(data.user));
           showToast('Login successful');
           onSuccess(data.user.id);
         }
@@ -1337,6 +1339,7 @@ const AuthModal = ({ mode, setMode, onClose, onSuccess }) => {
 // EXPORT
 // ===========================================
 export default App;
+
 
 
 
