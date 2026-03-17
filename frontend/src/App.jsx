@@ -257,6 +257,24 @@ const App = () => {
             onAddToCart={addToCart}
             onTrackEvent={trackEvent}
           />
+
+          {/* About */}
+          <AboutSection />
+
+          {/* Value Props */}
+          <ValuePropsSection />
+
+          {/* Showcase */}
+          <ShowcaseSection />
+
+          {/* Testimonials */}
+          <TestimonialsSection />
+
+          {/* FAQ */}
+          <FAQSection />
+
+          {/* Newsletter */}
+          <NewsletterSection />
         </main>
 
         {/* Toast */}
@@ -276,6 +294,9 @@ const App = () => {
 
         {/* Floating AI Learning Indicator */}
         {loading && <AILearningIndicator />}
+
+        {/* Footer */}
+        <Footer />
       </div>
     </ShopContext.Provider>
   );
@@ -839,6 +860,214 @@ const AILearningIndicator = () => {
       />
       <span className="font-medium">AI Learning Your Preferences...</span>
     </motion.div>
+  );
+};
+
+// ===========================================
+// EXTRA SECTIONS
+// ===========================================
+const ValuePropsSection = () => {
+  const items = [
+    {
+      title: 'Freshness you can taste',
+      body: 'Daily‑refreshed inventory with smart substitutions when something sells out.'
+    },
+    {
+      title: 'AI that learns quickly',
+      body: 'Your clicks, carts, and reviews improve every recommendation in real time.'
+    },
+    {
+      title: 'Fast, reliable delivery',
+      body: 'Optimized pick routes with clean, insulated packaging to protect quality.'
+    }
+  ];
+
+  return (
+    <section className="mt-10 grid gap-4 md:grid-cols-3">
+      {items.map((item, idx) => (
+        <motion.div
+          key={item.title}
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: idx * 0.05 }}
+          className="rounded-2xl border border-[var(--line)] bg-white/80 p-5 shadow-[var(--shadow-2)]"
+        >
+          <h3 className="title-font text-lg text-[var(--ink-1)]">{item.title}</h3>
+          <p className="mt-2 text-sm text-[var(--ink-2)]">{item.body}</p>
+        </motion.div>
+      ))}
+    </section>
+  );
+};
+
+const AboutSection = () => {
+  return (
+    <section className="mt-10 rounded-2xl border border-[var(--line)] bg-white/90 p-6 shadow-[var(--shadow-2)]">
+      <div className="grid gap-4 md:grid-cols-[1.2fr_0.8fr] items-center">
+        <div>
+          <h3 className="title-font text-2xl text-[var(--ink-1)]">About ShopIQ</h3>
+          <p className="mt-2 text-sm text-[var(--ink-2)]">
+            ShopIQ blends human‑curated grocery quality with AI personalization.
+            We focus on fresh, local inventory and a shopping experience that feels calm,
+            fast, and smart — the kind of store you actually want to return to.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {['Fresh-first sourcing', 'Zero clutter UI', 'Real-time learning'].map((tag) => (
+              <span
+                key={tag}
+                className="rounded-full border border-[var(--line)] bg-[var(--surface-2)] px-3 py-1 text-xs text-[var(--ink-2)]"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        </div>
+        <div className="rounded-2xl border border-[var(--line)] bg-[linear-gradient(135deg,var(--brand-2),var(--brand-3))] p-5 text-white">
+          <div className="text-sm opacity-90">Trusted by teams</div>
+          <div className="title-font text-4xl mt-1">120+</div>
+          <div className="mt-2 text-sm opacity-90">
+            Grocery partners across city zones with consistent freshness ratings.
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+};
+
+const ShowcaseSection = () => {
+  return (
+    <section className="mt-10 grid gap-4 md:grid-cols-[1.2fr_0.8fr]">
+      <div className="rounded-2xl border border-[var(--line)] bg-white/90 p-6 shadow-[var(--shadow-2)]">
+        <h3 className="title-font text-2xl text-[var(--ink-1)]">Today’s smart basket</h3>
+        <p className="mt-2 text-[var(--ink-2)]">
+          Curated picks that match your taste profile — balanced by freshness, value, and ratings.
+        </p>
+        <div className="mt-5 grid grid-cols-3 gap-3">
+          {['Avocados', 'Greek Yogurt', 'Sourdough', 'Granola', 'Olive Oil', 'Berries'].map((item) => (
+            <div
+              key={item}
+              className="rounded-xl border border-[var(--line)] bg-[var(--surface-2)] px-3 py-2 text-xs text-[var(--ink-2)]"
+            >
+              {item}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="rounded-2xl border border-[var(--line)] bg-[linear-gradient(135deg,var(--brand-2),var(--brand-1))] p-6 text-white shadow-[var(--shadow-2)]">
+        <div className="text-sm opacity-90">Delivery window</div>
+        <div className="title-font text-4xl mt-1">12–18 min</div>
+        <div className="mt-3 text-sm opacity-90">
+          Live couriers and priority routing for fresh produce.
+        </div>
+        <div className="mt-6 rounded-xl bg-white/15 p-4 text-sm">
+          Tip: Add 1–2 healthy staples to improve future recommendations.
+        </div>
+      </div>
+    </section>
+  );
+};
+
+const TestimonialsSection = () => {
+  const quotes = [
+    {
+      name: 'Aanya Kapoor',
+      quote: 'The recommendations feel like a real concierge. It nails my weekly basket.'
+    },
+    {
+      name: 'Rohit Mehta',
+      quote: 'Delivery is fast and the quality is top‑tier. Love the clean UI too.'
+    },
+    {
+      name: 'Zara Ali',
+      quote: 'The feedback buttons actually change what I see. That’s rare.'
+    }
+  ];
+
+  return (
+    <section className="mt-10">
+      <h3 className="title-font text-2xl text-[var(--ink-1)]">Loved by shoppers</h3>
+      <div className="mt-4 grid gap-4 md:grid-cols-3">
+        {quotes.map((q) => (
+          <div
+            key={q.name}
+            className="rounded-2xl border border-[var(--line)] bg-white/85 p-5 shadow-[var(--shadow-2)]"
+          >
+            <p className="text-sm text-[var(--ink-2)]">“{q.quote}”</p>
+            <p className="mt-3 text-sm font-medium text-[var(--ink-1)]">{q.name}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+};
+
+const FAQSection = () => {
+  const faqs = [
+    { q: 'How does the AI learn?', a: 'It uses your clicks, carts, purchases, and reviews to refine your profile.' },
+    { q: 'Can I control recommendations?', a: 'Yes — use likes, dislikes, and reviews to tune what you see.' },
+    { q: 'What if an item is out of stock?', a: 'We recommend the best alternative based on freshness and rating.' }
+  ];
+
+  return (
+    <section className="mt-10 rounded-2xl border border-[var(--line)] bg-white/85 p-6 shadow-[var(--shadow-2)]">
+      <h3 className="title-font text-2xl text-[var(--ink-1)]">FAQ</h3>
+      <div className="mt-4 grid gap-3">
+        {faqs.map((faq) => (
+          <div key={faq.q} className="rounded-xl border border-[var(--line)] bg-[var(--surface-2)] p-4">
+            <div className="font-medium text-[var(--ink-1)]">{faq.q}</div>
+            <div className="mt-1 text-sm text-[var(--ink-2)]">{faq.a}</div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+};
+
+const NewsletterSection = () => {
+  return (
+    <section className="mt-10 rounded-2xl border border-[var(--line)] bg-[linear-gradient(135deg,var(--brand-1),var(--brand-3))] p-6 text-white shadow-[var(--shadow-1)]">
+      <h3 className="title-font text-2xl">Get weekly fresh picks</h3>
+      <p className="mt-2 text-sm opacity-90">
+        New arrivals, seasonal recipes, and personalized bundles.
+      </p>
+      <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+        <input
+          type="email"
+          placeholder="you@example.com"
+          className="w-full rounded-full border border-white/30 bg-white/10 px-4 py-2 text-sm text-white placeholder:text-white/70 outline-none"
+        />
+        <button className="rounded-full bg-white px-5 py-2 text-sm font-medium text-[var(--brand-2)]">
+          Notify me
+        </button>
+      </div>
+    </section>
+  );
+};
+
+const Footer = () => {
+  return (
+    <footer className="mt-12 border-t border-[var(--line)] bg-white/70">
+      <div className="max-w-7xl mx-auto px-4 py-8 grid gap-4 md:grid-cols-3">
+        <div>
+          <div className="title-font text-lg text-[var(--ink-1)]">ShopIQ</div>
+          <p className="mt-2 text-sm text-[var(--ink-2)]">
+            AI‑powered grocery that feels personal.
+          </p>
+        </div>
+        <div className="text-sm text-[var(--ink-2)]">
+          <div className="font-medium text-[var(--ink-1)]">Support</div>
+          <div className="mt-2">Help Center</div>
+          <div>Order Tracking</div>
+          <div>Returns</div>
+        </div>
+        <div className="text-sm text-[var(--ink-2)]">
+          <div className="font-medium text-[var(--ink-1)]">Company</div>
+          <div className="mt-2">About</div>
+          <div>Careers</div>
+          <div>Press</div>
+        </div>
+      </div>
+    </footer>
   );
 };
 
