@@ -411,7 +411,8 @@ const getCurrentUserData = () => {
                         <div className="max-h-96 overflow-auto">
                           {cart.map(item => (
                             <div key={item.id} className="flex items-center gap-3 p-3 border-b border-gray-50 hover:bg-[var(--surface-2)]">
-                              <span className="text-3xl">{item.image}</span>
+                             
+                              <img src={item.image} alt="" />
                               <div className="flex-1">
                                 <p className="font-medium">{item.name}</p>
                                 <p className="text-sm text-gray-500">₹{item.price}</p>
