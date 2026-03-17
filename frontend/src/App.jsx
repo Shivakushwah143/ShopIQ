@@ -230,7 +230,43 @@ const Header = ({ cartCount, cartTotal, cart, updateQuantity, removeFromCart, on
     { id: 'user_guest', name: 'Guest', avatar: '👤', color: 'bg-gray-500' }
   ];
 
-  const currentUserData = users.find(u => u.id === currentUser) || users[0];
+const getLoggedInUser = () => {
+  try {
+    const data = localStorage.getItem("user");
+
+    if (!data) return null;
+
+    return JSON.parse(data);
+  } catch (error) {
+    console.error("Invalid user data");
+    return null;
+  }
+};
+
+// 🔹 get current user
+const getCurrentUserData = () => {
+  const loggedInUser = getLoggedInUser();
+
+  // if not logged in → return guest
+  if (!loggedInUser) {
+    return users[0];
+  }
+
+  // if logged in → return dynamic user
+  return {
+    id: loggedInUser.id || "user_logged",
+    name: loggedInUser.username || "User",
+    email: loggedInUser.email || "",
+    avatar: "🧑",
+    color: "bg-blue-500"
+  };
+};
+
+
+  
+  // const currentUserData = users.find(u => u.id === currentUser) || users[0];
+  const currentUserData = getCurrentUserData();
+   
 
   return (
     <header className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-orange-100 shadow-sm">
