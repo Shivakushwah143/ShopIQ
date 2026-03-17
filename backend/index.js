@@ -1,7 +1,4 @@
-// ===========================================
-// SHOPIQ - AI-POWERED RECOMMENDATION ENGINE
-// Complete Backend - Node.js + Express + MongoDB + Qdrant + Groq
-// ===========================================
+
 
 const express = require('express');
 const mongoose = require('mongoose');
@@ -30,12 +27,15 @@ const CONFIG = {
   },
   qdrant: {
     url: process.env.QDRANT_URL || 'http://localhost:6333',
-    collectionName: 'products'
+    collectionName: 'products',
+    apiKey: process.env.QDRANT_API_KEY,
+    disabled: (process.env.QDRANT_DISABLED || '').toLowerCase() === 'true'
   },
   groq: {
     apiKey: process.env.GROQ_API_KEY,
     model: 'llama2-70b-4096', // or embedding model
-    embeddingUrl: 'https://api.groq.com/openai/v1/embeddings'
+    embeddingUrl: 'https://api.groq.com/openai/v1/embeddings',
+    disabled: (process.env.GROQ_DISABLED || '').toLowerCase() === 'true'
   }
 };
 
@@ -97,13 +97,23 @@ const UserEvent = mongoose.model('UserEvent', userEventSchema);
 class QdrantService {
   constructor() {
     this.client = new QdrantClient({ 
-      url: CONFIG.qdrant.url 
+      url: CONFIG.qdrant.url,
+      apiKey: CONFIG.qdrant.apiKey
     });
     this.collectionName = CONFIG.qdrant.collectionName;
+    this.disabled = CONFIG.qdrant.disabled;
+    this._warnedDisabled = false;
   }
 
   // Initialize collection
   async initCollection() {
+    if (this.disabled) {
+      if (!this._warnedDisabled) {
+        console.warn('⚠️ Qdrant disabled; skipping vector search');
+        this._warnedDisabled = true;
+      }
+      return;
+    }
     try {
       const collections = await this.client.getCollections();
       const exists = collections.collections.some(
@@ -128,6 +138,7 @@ class QdrantService {
 
   // Store product vector
   async upsertProduct(productId, vector, payload) {
+    if (this.disabled) return false;
     try {
       await this.client.upsert(this.collectionName, {
         points: [{
@@ -145,6 +156,7 @@ class QdrantService {
 
   // Search similar products
   async searchSimilar(vector, limit = 10, filter = {}) {
+    if (this.disabled) return [];
     try {
       const result = await this.client.search(this.collectionName, {
         vector: vector,
@@ -161,6 +173,7 @@ class QdrantService {
 
   // Delete product
   async deleteProduct(productId) {
+    if (this.disabled) return false;
     try {
       await this.client.delete(this.collectionName, {
         points: [productId]
@@ -180,13 +193,16 @@ class GroqService {
   constructor() {
     this.apiKey = CONFIG.groq.apiKey;
     this.embeddingUrl = CONFIG.groq.embeddingUrl;
+    this.disabled = CONFIG.groq.disabled;
   }
 
   // Generate embedding for text
   async generateEmbedding(text) {
     try {
-      if (!this.apiKey) {
-        console.warn('⚠️ No Groq API key, using mock embedding');
+      if (this.disabled || !this.apiKey) {
+        if (!this.disabled) {
+          console.warn('⚠️ No Groq API key, using mock embedding');
+        }
         return this.getMockEmbedding(text);
       }
 
@@ -261,6 +277,10 @@ class RecommendationEngine {
   // Index all products (run once after seeding)
   async indexAllProducts() {
     try {
+      if (this.qdrant.disabled) {
+        console.warn('⚠️ Qdrant disabled; skipping indexing');
+        return true;
+      }
       const products = await Product.find({});
       console.log(`📦 Indexing ${products.length} products...`);
 
@@ -351,7 +371,11 @@ class RecommendationEngine {
       });
       const purchasedIds = purchasedEvents.map(e => e.productId);
 
-      // Step 7: Search similar in Qdrant
+      // Step 7: Search similar in Qdrant (fallback to trending if disabled)
+      if (this.qdrant.disabled) {
+        return await this.getTrendingProducts(limit);
+      }
+
       let results = await this.qdrant.searchSimilar(userVector, limit * 2);
 
       // Step 8: Filter and format
@@ -422,7 +446,10 @@ class RecommendationEngine {
 
   // Generate reason for recommendation
   getRecommendationReason(category, preferences = []) {
-    if (preferences.includes(category.toLowerCase())) {
+    const prefSet = new Set(
+      preferences.map(p => String(p).toLowerCase())
+    );
+    if (prefSet.has(String(category).toLowerCase())) {
       return `Based on your preference for ${category}`;
     }
     return `Recommended based on your activity`;
