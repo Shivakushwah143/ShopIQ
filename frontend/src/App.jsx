@@ -226,12 +226,11 @@ const Header = ({ cartCount, cartTotal, cart, updateQuantity, removeFromCart, on
   const [showUserMenu, setShowUserMenu] = useState(false);
 
   const users = [
-    { id: 'user_john', name: 'John', avatar: '🏃', color: 'bg-blue-500' },
-    { id: 'user_sarah', name: 'Sarah', avatar: '👩‍💻', color: 'bg-purple-500' },
+  
     { id: 'user_guest', name: 'Guest', avatar: '👤', color: 'bg-gray-500' }
   ];
 
-  const currentUserData = users.find(u => u.id === currentUser) || users[2];
+  const currentUserData = users.find(u => u.id === currentUser) || users[0];
 
   return (
     <header className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-orange-100 shadow-sm">
@@ -598,9 +597,10 @@ const RecommendationsSection = ({ recommendations, loading, onAddToCart, onTrack
                   <span>AI Pick</span>
                 </div>
                 <div className="p-4 text-center">
-                  <span className="text-6xl mb-2 block group-hover:scale-110 transition-transform">
+                  {/* <span className="text-6xl mb-2 block group-hover:scale-110 transition-transform">
                     {product.image}
-                  </span>
+                  </span> */}
+                  <img src={product.image} alt="" />
                   <h3 className="font-medium text-gray-800">{product.name}</h3>
                   <p className="text-sm text-gray-500 mb-2">₹{product.price}</p>
                   <p className="text-xs text-purple-600 mb-2">{product.reason}</p>
