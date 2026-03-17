@@ -1,11 +1,49 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Space+Grotesk:wght@400;500;600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
   color-scheme: light;
+  --brand-1: #f2684a;
+  --brand-2: #1f6f78;
+  --brand-3: #87b38d;
+  --ink-1: #1f2937;
+  --ink-2: #51606d;
+  --surface: #ffffff;
+  --surface-2: #f6f3ef;
+  --line: #e6ddd2;
+  --shadow-1: 0 12px 30px rgba(17, 24, 39, 0.08);
+  --shadow-2: 0 6px 18px rgba(17, 24, 39, 0.08);
+}
+
+* {
+  box-sizing: border-box;
 }
 
 body {
   margin: 0;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  color: var(--ink-1);
+  background: radial-gradient(1200px 600px at 10% -10%, #fef3e7 0%, rgba(254, 243, 231, 0) 60%),
+    radial-gradient(1000px 700px at 110% 10%, #e6f3f1 0%, rgba(230, 243, 241, 0) 60%),
+    var(--surface-2);
+}
+
+.app-shell {
+  background: transparent;
+}
+
+.title-font {
+  font-family: 'Fraunces', ui-serif, Georgia, serif;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

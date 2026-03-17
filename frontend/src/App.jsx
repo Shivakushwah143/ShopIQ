@@ -15,6 +15,16 @@ const useShop = () => {
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 
+const isImageUrl = (value) =>
+  typeof value === 'string' && (value.startsWith('http') || value.startsWith('data:'));
+
+const ProductImage = ({ value, emojiClassName, imgClassName }) => {
+  if (isImageUrl(value)) {
+    return <img src={value} alt="" className={imgClassName} />;
+  }
+  return <span className={emojiClassName}>{value || '🛒'}</span>;
+};
+
 // ===========================================
 // MAIN APP COMPONENT
 // ===========================================
@@ -118,7 +128,7 @@ const App = () => {
       }
       return [...prev, { ...product, quantity: 1 }];
     });
-    trackEvent(product.id, 'cart');
+    trackEvent(product.id, 'add_to_cart');
   };
 
   const removeFromCart = (productId) => {
@@ -152,7 +162,7 @@ const App = () => {
       userProfile,
       loading
     }}>
-      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-emerald-50">
+      <div className="app-shell min-h-screen">
         {/* Auth Modal */}
         <AnimatePresence>
           {showAuth && (
@@ -269,7 +279,7 @@ const getCurrentUserData = () => {
    
 
   return (
-    <header className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-orange-100 shadow-sm">
+    <header className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-[var(--line)] shadow-sm">
       <div className="max-w-7xl mx-auto px-4 py-3">
         <div className="flex items-center justify-between">
           {/* Logo */}
@@ -280,10 +290,10 @@ const getCurrentUserData = () => {
           >
             <span className="text-4xl">🛒</span>
             <div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-orange-600 to-emerald-600 bg-clip-text text-transparent">
+              <h1 className="title-font text-2xl font-bold bg-gradient-to-r from-[var(--brand-1)] to-[var(--brand-2)] bg-clip-text text-transparent">
                 ShopIQ
               </h1>
-              <p className="text-xs text-gray-500">AI-Powered Grocery</p>
+              <p className="text-xs text-[var(--ink-2)]">Smart grocery studio</p>
             </div>
           </motion.div>
 
@@ -293,18 +303,18 @@ const getCurrentUserData = () => {
               <input
                 type="text"
                 placeholder="Search for groceries, fruits, vegetables..."
-                className="w-full px-4 py-2 pl-10 pr-4 rounded-full border border-gray-200 focus:border-orange-400 focus:ring-2 focus:ring-orange-200 outline-none transition-all"
+                className="w-full px-4 py-2 pl-10 pr-4 rounded-full border border-[var(--line)] bg-white/90 shadow-sm focus:border-[var(--brand-1)] focus:ring-2 focus:ring-[rgba(224,122,95,0.2)] outline-none transition-all"
               />
-              <span className="absolute left-3 top-2.5 text-gray-400">🔍</span>
+              <span className="absolute left-3 top-2.5 text-[var(--ink-2)]">🔍</span>
             </div>
           </div>
 
           {/* Right Section */}
           <div className="flex items-center gap-4">
             {/* Delivery Time */}
-            <div className="hidden md:flex items-center gap-1 bg-emerald-50 px-3 py-1 rounded-full">
-              <span className="text-emerald-600">⚡</span>
-              <span className="text-sm font-medium text-emerald-700">10 min</span>
+            <div className="hidden md:flex items-center gap-1 bg-white/80 px-3 py-1 rounded-full border border-[var(--line)] shadow-sm">
+              <span className="text-[var(--brand-1)]">⚡</span>
+              <span className="text-sm font-medium text-[var(--ink-1)]">10 min</span>
             </div>
 
             {/* User Menu */}
@@ -313,7 +323,7 @@ const getCurrentUserData = () => {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setShowUserMenu(!showUserMenu)}
-                className="flex items-center gap-2 bg-gradient-to-r from-orange-50 to-emerald-50 px-3 py-2 rounded-full hover:shadow-md transition-all"
+                className="flex items-center gap-2 bg-white/90 px-3 py-2 rounded-full border border-[var(--line)] shadow-sm hover:shadow-md transition-all"
               >
                 <span className="text-2xl">{currentUserData.avatar}</span>
                 <span className="hidden md:inline font-medium">{currentUserData.name}</span>
@@ -335,13 +345,13 @@ const getCurrentUserData = () => {
                           setCurrentUser(user.id);
                           setShowUserMenu(false);
                         }}
-                        className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-orange-50 transition-colors ${
-                          currentUser === user.id ? 'bg-orange-100' : ''
+                        className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-[var(--surface-2)] transition-colors ${
+                          currentUser === user.id ? 'bg-[rgba(224,122,95,0.12)]' : ''
                         }`}
                       >
                         <span className="text-2xl">{user.avatar}</span>
                         <span>{user.name}</span>
-                        {currentUser === user.id && <span className="ml-auto text-orange-600">✓</span>}
+                        {currentUser === user.id && <span className="ml-auto text-[var(--brand-1)]">✓</span>}
                       </button>
                     ))}
                     <div className="border-t border-gray-100">
@@ -350,7 +360,7 @@ const getCurrentUserData = () => {
                           onAuthClick();
                           setShowUserMenu(false);
                         }}
-                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-purple-50 text-purple-600"
+                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[rgba(61,90,128,0.08)] text-[var(--brand-2)]"
                       >
                         <span>✨</span>
                         <span>Sign Up / Login</span>
@@ -367,7 +377,7 @@ const getCurrentUserData = () => {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setShowCart(!showCart)}
-                className="relative bg-gradient-to-r from-orange-500 to-emerald-500 text-white px-4 py-2 rounded-full flex items-center gap-2 hover:shadow-lg transition-all"
+                className="relative bg-gradient-to-r from-[var(--brand-1)] to-[var(--brand-3)] text-white px-4 py-2 rounded-full flex items-center gap-2 hover:shadow-lg transition-all"
               >
                 <span>🛒</span>
                 <span className="hidden md:inline">Cart</span>
@@ -385,7 +395,7 @@ const getCurrentUserData = () => {
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
-                    className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-50"
+                    className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-[var(--line)] overflow-hidden z-50"
                   >
                     <div className="p-4 border-b border-gray-100">
                       <h3 className="font-semibold text-lg">Your Cart</h3>
@@ -400,7 +410,7 @@ const getCurrentUserData = () => {
                       <>
                         <div className="max-h-96 overflow-auto">
                           {cart.map(item => (
-                            <div key={item.id} className="flex items-center gap-3 p-3 border-b border-gray-50 hover:bg-orange-50">
+                            <div key={item.id} className="flex items-center gap-3 p-3 border-b border-gray-50 hover:bg-[var(--surface-2)]">
                               <span className="text-3xl">{item.image}</span>
                               <div className="flex-1">
                                 <p className="font-medium">{item.name}</p>
@@ -425,7 +435,7 @@ const getCurrentUserData = () => {
                           ))}
                         </div>
                         
-                        <div className="p-4 bg-gradient-to-r from-orange-50 to-emerald-50">
+                        <div className="p-4 bg-[var(--surface-2)]">
                           <div className="flex justify-between mb-2">
                             <span>Total:</span>
                             <span className="font-bold">₹{cartTotal}</span>
@@ -433,7 +443,7 @@ const getCurrentUserData = () => {
                           <motion.button
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
-                            className="w-full bg-gradient-to-r from-orange-500 to-emerald-500 text-white py-2 rounded-lg font-medium hover:shadow-lg transition-all"
+                            className="w-full bg-gradient-to-r from-[var(--brand-1)] to-[var(--brand-2)] text-white py-2 rounded-lg font-medium hover:shadow-lg transition-all"
                           >
                             Checkout
                           </motion.button>
@@ -471,7 +481,7 @@ const CategoriesBar = ({ categories, selectedCategory, onSelectCategory }) => {
     : defaultCategories;
 
   return (
-    <div className="bg-white/50 backdrop-blur-sm sticky top-[73px] z-40 border-b border-orange-100">
+    <div className="bg-white/70 backdrop-blur-sm sticky top-[73px] z-40 border-b border-[var(--line)]">
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex items-center gap-2 overflow-x-auto py-3 hide-scrollbar">
           {displayCategories.map(cat => (
@@ -482,8 +492,8 @@ const CategoriesBar = ({ categories, selectedCategory, onSelectCategory }) => {
               onClick={() => onSelectCategory(cat.name)}
               className={`flex items-center gap-2 px-4 py-2 rounded-full whitespace-nowrap transition-all ${
                 selectedCategory === cat.name
-                  ? 'bg-gradient-to-r from-orange-500 to-emerald-500 text-white shadow-md'
-                  : 'bg-white hover:bg-orange-50 text-gray-700'
+                  ? 'bg-gradient-to-r from-[var(--brand-1)] to-[var(--brand-3)] text-white shadow-md'
+                  : 'bg-white hover:bg-[var(--surface-2)] text-[var(--ink-1)] border border-[var(--line)]'
               }`}
             >
               <span>{cat.icon || '🛒'}</span>
@@ -504,22 +514,53 @@ const HeroSection = () => {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="relative mb-8 overflow-hidden rounded-2xl bg-gradient-to-r from-orange-500 to-emerald-500 p-8 text-white"
+      className="relative mb-8 overflow-hidden rounded-2xl bg-[linear-gradient(135deg,var(--brand-1),var(--brand-2))] p-8 text-white shadow-[var(--shadow-1)]"
     >
-      <div className="relative z-10">
-        <h2 className="text-3xl md:text-4xl font-bold mb-2">
-          Groceries delivered in <span className="underline decoration-yellow-300">10 minutes</span>
-        </h2>
-        <p className="text-lg opacity-90 mb-4">
-          AI-powered recommendations just for you
-        </p>
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className="bg-white text-orange-600 px-6 py-2 rounded-full font-medium hover:shadow-lg transition-all"
-        >
-          Shop Now
-        </motion.button>
+      <div className="relative z-10 grid gap-6 md:grid-cols-[1.1fr_0.9fr] items-center">
+        <div>
+          <h2 className="title-font text-3xl md:text-4xl font-bold mb-3">
+            A smarter grocery run, beautifully curated
+          </h2>
+          <p className="text-lg opacity-90 mb-5">
+            Personalized picks, fresh delivery, and a storefront that feels handcrafted.
+          </p>
+          <div className="flex items-center gap-3">
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="bg-white text-[var(--brand-2)] px-6 py-2 rounded-full font-medium hover:shadow-lg transition-all"
+            >
+              Shop Now
+            </motion.button>
+            <div className="hidden md:flex items-center gap-2 text-sm text-white/80">
+              <span className="inline-flex h-2 w-2 rounded-full bg-white/80" />
+              Fresh picks updated daily
+            </div>
+          </div>
+        </div>
+
+        <div className="relative">
+          <div className="grid grid-cols-2 gap-3">
+            <img
+              src="https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&fm=jpg&ixlib=rb-4.1.0&q=80&w=900"
+              alt="Fresh produce aisle"
+              className="h-40 w-full rounded-2xl object-cover shadow-[var(--shadow-2)] ring-1 ring-white/30 opacity-95"
+              loading="lazy"
+            />
+            <img
+              src="https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&fm=jpg&ixlib=rb-4.1.0&q=80&w=900"
+              alt="Crisp vegetables"
+              className="h-40 w-full rounded-2xl object-cover shadow-[var(--shadow-2)] ring-1 ring-white/30 opacity-95"
+              loading="lazy"
+            />
+            <img
+              src="https://images.unsplash.com/photo-1504754524776-8f4f37790ca0?auto=format&fit=crop&fm=jpg&ixlib=rb-4.1.0&q=80&w=1200"
+              alt="Artisan bread and groceries"
+              className="col-span-2 h-44 w-full rounded-2xl object-cover shadow-[var(--shadow-2)] ring-1 ring-white/30 opacity-95"
+              loading="lazy"
+            />
+          </div>
+        </div>
       </div>
       
       {/* Decorative elements */}
@@ -530,16 +571,16 @@ const HeroSection = () => {
       <motion.div
         animate={{ y: [0, -10, 0] }}
         transition={{ repeat: Infinity, duration: 3 }}
-        className="absolute right-32 top-8 text-6xl opacity-30"
+        className="absolute right-32 top-8 text-6xl opacity-20"
       >
-        🍎
+        🥕
       </motion.div>
       <motion.div
         animate={{ y: [0, -15, 0] }}
         transition={{ repeat: Infinity, duration: 4, delay: 0.5 }}
-        className="absolute right-16 bottom-8 text-6xl opacity-30"
+        className="absolute right-16 bottom-8 text-6xl opacity-20"
       >
-        🥑
+        🍋
       </motion.div>
     </motion.div>
   );
@@ -553,13 +594,13 @@ const AIProfilePanel = ({ profile }) => {
     <motion.div
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
-      className="mb-6 p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl border border-purple-100"
+      className="mb-6 p-4 bg-white/80 rounded-xl border border-[var(--line)] shadow-[var(--shadow-2)]"
     >
       <div className="flex items-center gap-3 mb-3">
         <span className="text-2xl">🧠</span>
         <div>
-          <h3 className="font-semibold text-gray-800">AI Detected Interests</h3>
-          <p className="text-xs text-gray-500">Based on your activity</p>
+          <h3 className="font-semibold text-[var(--ink-1)]">AI Detected Interests</h3>
+          <p className="text-xs text-[var(--ink-2)]">Based on your activity</p>
         </div>
       </div>
       
@@ -570,18 +611,18 @@ const AIProfilePanel = ({ profile }) => {
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ delay: idx * 0.1 }}
-            className="flex items-center gap-2 bg-white px-3 py-2 rounded-full shadow-sm"
+            className="flex items-center gap-2 bg-white px-3 py-2 rounded-full border border-[var(--line)] shadow-sm"
           >
-            <span className="text-green-500">✓</span>
+            <span className="text-[var(--brand-3)]">✓</span>
             <span>{interest.name}</span>
             <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${interest.confidence * 100}%` }}
-                className="h-full bg-gradient-to-r from-orange-500 to-emerald-500"
+                className="h-full bg-gradient-to-r from-[var(--brand-1)] to-[var(--brand-3)]"
               />
             </div>
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-[var(--ink-2)]">
               {Math.round(interest.confidence * 100)}%
             </span>
           </motion.div>
@@ -607,14 +648,14 @@ const RecommendationsSection = ({ recommendations, loading, onAddToCart, onTrack
         >
           🤖
         </motion.div>
-        <h2 className="text-xl font-semibold bg-gradient-to-r from-orange-600 to-emerald-600 bg-clip-text text-transparent">
+        <h2 className="title-font text-xl font-semibold bg-gradient-to-r from-[var(--brand-1)] to-[var(--brand-2)] bg-clip-text text-transparent">
           AI Picks For You
         </h2>
       </div>
 
       {recommendations.length === 0 ? (
-        <div className="text-center py-8 bg-gray-50 rounded-xl">
-          <p className="text-gray-500">Start browsing to get personalized recommendations</p>
+        <div className="text-center py-8 bg-white/80 rounded-xl border border-[var(--line)]">
+          <p className="text-[var(--ink-2)]">Start browsing to get personalized recommendations</p>
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
@@ -625,30 +666,31 @@ const RecommendationsSection = ({ recommendations, loading, onAddToCart, onTrack
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: idx * 0.05 }}
               whileHover={{ y: -4 }}
-              className="bg-white rounded-xl shadow-sm hover:shadow-xl transition-all border border-orange-100 overflow-hidden group"
+              className="bg-white rounded-xl shadow-sm hover:shadow-xl transition-all border border-[var(--line)] overflow-hidden group"
             >
               <div className="relative">
-                <div className="absolute top-2 left-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
+                <div className="absolute top-2 left-2 bg-[var(--brand-2)] text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
                   <span>🤖</span>
                   <span>AI Pick</span>
                 </div>
                 <div className="p-4 text-center">
-                  {/* <span className="text-6xl mb-2 block group-hover:scale-110 transition-transform">
-                    {product.image}
-                  </span> */}
-                  <img src={product.image} alt="" />
-                  <h3 className="font-medium text-gray-800">{product.name}</h3>
-                  <p className="text-sm text-gray-500 mb-2">₹{product.price}</p>
-                  <p className="text-xs text-purple-600 mb-2">{product.reason}</p>
+                  <ProductImage
+                    value={product.image}
+                    emojiClassName="text-6xl mb-2 block group-hover:scale-110 transition-transform"
+                    imgClassName="mx-auto h-16 w-16 object-contain mb-2 block group-hover:scale-110 transition-transform"
+                  />
+                  <h3 className="font-medium text-[var(--ink-1)]">{product.name}</h3>
+                  <p className="text-sm text-[var(--ink-2)] mb-2">₹{product.price}</p>
+                  <p className="text-xs text-[var(--brand-2)] mb-2">{product.reason}</p>
                 </div>
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => {
                     onAddToCart(product);
-                    onTrackEvent(product.id, 'click');
+                    onTrackEvent(product.id, 'product_click');
                   }}
-                  className="w-full bg-gradient-to-r from-orange-500 to-emerald-500 text-white py-2 text-sm font-medium hover:shadow-lg transition-all"
+                  className="w-full bg-gradient-to-r from-[var(--brand-1)] to-[var(--brand-3)] text-white py-2 text-sm font-medium hover:shadow-lg transition-all"
                 >
                   Add to Cart
                 </motion.button>
@@ -667,7 +709,7 @@ const RecommendationsSection = ({ recommendations, loading, onAddToCart, onTrack
 const ProductsGrid = ({ products, onAddToCart, onTrackEvent }) => {
   return (
     <section>
-      <h2 className="text-xl font-semibold mb-4 text-gray-800">All Products</h2>
+      <h2 className="title-font text-xl font-semibold mb-4 text-[var(--ink-1)]">All Products</h2>
       <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
         {products.map((product, idx) => (
           <motion.div
@@ -676,22 +718,25 @@ const ProductsGrid = ({ products, onAddToCart, onTrackEvent }) => {
             animate={{ opacity: 1 }}
             transition={{ delay: idx * 0.02 }}
             whileHover={{ y: -2 }}
-            className="bg-white rounded-lg shadow-sm hover:shadow-md transition-all border border-gray-100 overflow-hidden"
+            className="bg-white rounded-lg shadow-sm hover:shadow-md transition-all border border-[var(--line)] overflow-hidden"
           >
             <div className="p-3 text-center">
-              {/* <span className="text-4xl mb-2 block">{product.image}</span> */}
-              <img src={product.image} alt="" />
-              <h3 className="font-medium text-sm">{product.name}</h3>
-              <p className="text-sm font-bold text-orange-600 mt-1">₹{product.price}</p>
+              <ProductImage
+                value={product.image}
+                emojiClassName="text-4xl mb-2 block"
+                imgClassName="mx-auto h-10 w-10 object-contain mb-2 block"
+              />
+              <h3 className="font-medium text-sm text-[var(--ink-1)]">{product.name}</h3>
+              <p className="text-sm font-bold text-[var(--brand-1)] mt-1">₹{product.price}</p>
             </div>
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              onClick={() => {
-                onAddToCart(product);
-                onTrackEvent(product.id, 'click');
-              }}
-              className="w-full bg-gradient-to-r from-orange-400 to-emerald-400 text-white py-1.5 text-sm hover:from-orange-500 hover:to-emerald-500 transition-all"
+            onClick={() => {
+              onAddToCart(product);
+              onTrackEvent(product.id, 'product_click');
+            }}
+              className="w-full bg-gradient-to-r from-[var(--brand-1)] to-[var(--brand-3)] text-white py-1.5 text-sm hover:shadow-md transition-all"
             >
               Add
             </motion.button>
@@ -711,7 +756,7 @@ const AILearningIndicator = () => {
       initial={{ opacity: 0, y: 50 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 50 }}
-      className="fixed bottom-6 right-6 bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-3 rounded-full shadow-xl flex items-center gap-3 z-50"
+      className="fixed bottom-6 right-6 bg-gradient-to-r from-[var(--brand-2)] to-[var(--brand-1)] text-white px-4 py-3 rounded-full shadow-xl flex items-center gap-3 z-50"
     >
       <motion.div
         animate={{ rotate: 360 }}
@@ -805,19 +850,19 @@ const AuthModal = ({ mode, setMode, onClose, onSuccess }) => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50"
+      className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50"
       onClick={onClose}
     >
       <motion.div
         initial={{ scale: 0.9, y: 20 }}
         animate={{ scale: 1, y: 0 }}
         exit={{ scale: 0.9, y: 20 }}
-        className="bg-white rounded-2xl p-6 max-w-md w-full mx-4"
+        className="bg-white rounded-2xl p-6 max-w-md w-full mx-4 shadow-[var(--shadow-1)] border border-[var(--line)]"
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center gap-2 mb-6">
           <span className="text-3xl">🛒</span>
-          <h2 className="text-2xl font-bold bg-gradient-to-r from-orange-600 to-emerald-600 bg-clip-text text-transparent">
+          <h2 className="title-font text-2xl font-bold bg-gradient-to-r from-[var(--brand-1)] to-[var(--brand-2)] bg-clip-text text-transparent">
             ShopIQ
           </h2>
         </div>
@@ -827,8 +872,8 @@ const AuthModal = ({ mode, setMode, onClose, onSuccess }) => {
             onClick={() => setMode('login')}
             className={`flex-1 py-2 rounded-lg font-medium transition-all ${
               mode === 'login'
-                ? 'bg-gradient-to-r from-orange-500 to-emerald-500 text-white'
-                : 'bg-gray-100 text-gray-600'
+                ? 'bg-gradient-to-r from-[var(--brand-1)] to-[var(--brand-3)] text-white'
+                : 'bg-[var(--surface-2)] text-[var(--ink-2)] border border-[var(--line)]'
             }`}
           >
             Login
@@ -837,8 +882,8 @@ const AuthModal = ({ mode, setMode, onClose, onSuccess }) => {
             onClick={() => setMode('signup')}
             className={`flex-1 py-2 rounded-lg font-medium transition-all ${
               mode === 'signup'
-                ? 'bg-gradient-to-r from-orange-500 to-emerald-500 text-white'
-                : 'bg-gray-100 text-gray-600'
+                ? 'bg-gradient-to-r from-[var(--brand-1)] to-[var(--brand-3)] text-white'
+                : 'bg-[var(--surface-2)] text-[var(--ink-2)] border border-[var(--line)]'
             }`}
           >
             Sign Up
@@ -848,45 +893,45 @@ const AuthModal = ({ mode, setMode, onClose, onSuccess }) => {
         <form onSubmit={handleSubmit}>
           {mode === 'signup' && (
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+              <label className="block text-sm font-medium text-[var(--ink-2)] mb-1">Name</label>
               <input
                 type="text"
                 required
                 value={formData.name}
                 onChange={e => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none"
+                className="w-full px-3 py-2 border border-[var(--line)] rounded-lg focus:border-[var(--brand-1)] focus:ring-2 focus:ring-[rgba(224,122,95,0.2)] outline-none"
                 placeholder="John Doe"
               />
             </div>
           )}
 
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <label className="block text-sm font-medium text-[var(--ink-2)] mb-1">Email</label>
             <input
               type="email"
               required
               value={formData.email}
               onChange={e => setFormData({ ...formData, email: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none"
+              className="w-full px-3 py-2 border border-[var(--line)] rounded-lg focus:border-[var(--brand-1)] focus:ring-2 focus:ring-[rgba(224,122,95,0.2)] outline-none"
               placeholder="john@example.com"
             />
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+            <label className="block text-sm font-medium text-[var(--ink-2)] mb-1">Password</label>
             <input
               type="password"
               required
               value={formData.password}
               onChange={e => setFormData({ ...formData, password: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none"
+              className="w-full px-3 py-2 border border-[var(--line)] rounded-lg focus:border-[var(--brand-1)] focus:ring-2 focus:ring-[rgba(224,122,95,0.2)] outline-none"
               placeholder="••••••••"
             />
           </div>
 
           {mode === 'signup' && (
             <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-[var(--ink-2)] mb-2">
                 Select Your Interests (for better recommendations)
               </label>
               <div className="grid grid-cols-2 gap-2">
@@ -897,8 +942,8 @@ const AuthModal = ({ mode, setMode, onClose, onSuccess }) => {
                     onClick={() => togglePreference(pref.name)}
                     className={`flex items-center gap-2 p-2 rounded-lg border transition-all ${
                       selectedPrefs.includes(pref.name)
-                        ? 'bg-orange-50 border-orange-500 text-orange-700'
-                        : 'border-gray-200 hover:bg-gray-50'
+                        ? 'bg-[rgba(224,122,95,0.12)] border-[var(--brand-1)] text-[var(--brand-1)]'
+                        : 'border-[var(--line)] hover:bg-[var(--surface-2)]'
                     }`}
                   >
                     <span>{pref.icon}</span>
@@ -913,7 +958,7 @@ const AuthModal = ({ mode, setMode, onClose, onSuccess }) => {
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             type="submit"
-            className="w-full bg-gradient-to-r from-orange-500 to-emerald-500 text-white py-3 rounded-lg font-medium hover:shadow-lg transition-all"
+            className="w-full bg-gradient-to-r from-[var(--brand-1)] to-[var(--brand-2)] text-white py-3 rounded-lg font-medium hover:shadow-lg transition-all"
           >
             {mode === 'login' ? 'Login' : 'Create Account'}
           </motion.button>
@@ -922,38 +967,6 @@ const AuthModal = ({ mode, setMode, onClose, onSuccess }) => {
     </motion.div>
   );
 };
-
-// ===========================================
-// CSS STYLES
-// ===========================================
-const styles = `
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-
-  * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-  }
-
-  body {
-    font-family: 'Inter', sans-serif;
-    background: linear-gradient(135deg, #fef3c7 0%, #f0fdf4 100%);
-  }
-
-  .hide-scrollbar::-webkit-scrollbar {
-    display: none;
-  }
-  
-  .hide-scrollbar {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-`;
-
-// Inject styles
-const styleSheet = document.createElement('style');
-styleSheet.textContent = styles;
-document.head.appendChild(styleSheet);
 
 // ===========================================
 // EXPORT

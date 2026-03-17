@@ -40,6 +40,17 @@ const CONFIG = {
 };
 
 // ===========================================
+// EVENT WEIGHTS
+// ===========================================
+const EVENT_WEIGHTS = {
+  product_click: 1,
+  add_to_cart: 3,
+  purchase: 5,
+  review_positive: 4,
+  review_negative: -3
+};
+
+// ===========================================
 // MONGODB SCHEMAS
 // ===========================================
 
@@ -77,9 +88,11 @@ const userEventSchema = new mongoose.Schema({
   eventType: { 
     type: String, 
     required: true,
-    enum: ['click', 'cart', 'purchase', 'view']
+    enum: ['product_click', 'add_to_cart', 'purchase', 'review']
   },
   quantity: { type: Number, min: 1, default: 1 },
+  rating: { type: Number, min: 1, max: 5 },
+  sentiment: { type: String, enum: ['positive', 'negative', 'neutral'] },
   timestamp: { type: Date, default: Date.now, index: true }
 });
 
@@ -194,6 +207,7 @@ class GroqService {
     this.apiKey = CONFIG.groq.apiKey;
     this.embeddingUrl = CONFIG.groq.embeddingUrl;
     this.disabled = CONFIG.groq.disabled;
+    this._warnedUnsupported = false;
   }
 
   // Generate embedding for text
@@ -227,6 +241,16 @@ class GroqService {
         throw new Error('Invalid embedding response');
       }
     } catch (error) {
+      const status = error?.response?.status;
+      if (status === 400 || status === 404) {
+        // Groq embeddings not supported or invalid model — disable to avoid spam
+        this.disabled = true;
+        if (!this._warnedUnsupported) {
+          console.warn('⚠️ Groq embeddings unsupported; using mock embeddings');
+          this._warnedUnsupported = true;
+        }
+        return this.getMockEmbedding(text);
+      }
       console.error('❌ Groq embedding error:', error.message);
       // Fallback to mock embedding
       return this.getMockEmbedding(text);
@@ -322,12 +346,43 @@ class RecommendationEngine {
         .sort({ timestamp: -1 })
         .limit(20);
 
-      // Step 3: If no events and no preferences, return trending
+      // Step 3: If no events and no preferences, return popular products
       if (events.length === 0 && (!user?.preferences || user.preferences.length === 0)) {
-        return await this.getTrendingProducts(limit);
+        return await this.getPopularProducts(limit);
       }
 
-      // Step 4: Build interest profile
+      // Step 4: Build weighted product scores
+      const productScores = new Map();
+      const negativeProducts = new Set();
+
+      for (const event of events) {
+        let score = 0;
+
+        if (event.eventType === 'review') {
+          const rating = event.rating || 0;
+          const sentiment =
+            event.sentiment ||
+            (rating >= 4 ? 'positive' : rating <= 2 ? 'negative' : 'neutral');
+
+          score =
+            sentiment === 'positive'
+              ? EVENT_WEIGHTS.review_positive
+              : sentiment === 'negative'
+              ? EVENT_WEIGHTS.review_negative
+              : 0;
+
+          if (sentiment === 'negative') {
+            negativeProducts.add(event.productId);
+          }
+        } else {
+          score = EVENT_WEIGHTS[event.eventType] || 0;
+        }
+
+        const prev = productScores.get(event.productId) || 0;
+        productScores.set(event.productId, prev + score);
+      }
+
+      // Step 5: Build interest text
       let interestText = '';
 
       // Add user preferences first
@@ -335,52 +390,70 @@ class RecommendationEngine {
         interestText += user.preferences.join(' ') + ' ';
       }
 
-      // Add product interactions
-      if (events.length > 0) {
-        const productIds = [...new Set(events.map(e => e.productId))];
-        const products = await Product.find({ _id: { $in: productIds } });
-        
-        // Weight by event type
-        const weightedProducts = [];
-        for (const event of events) {
-          const product = products.find(p => p._id === event.productId);
-          if (product) {
-            const weight = 
-              event.eventType === 'purchase' ? 3 :
-              event.eventType === 'cart' ? 2 : 1;
-            
-            for (let i = 0; i < weight; i++) {
-              weightedProducts.push(product);
-            }
-          }
-        }
+      const scoredProductIds = [...productScores.keys()];
+      const scoredProducts = await Product.find({ _id: { $in: scoredProductIds } });
 
-        // Build text from weighted products
-        interestText += weightedProducts
-          .map(p => `${p.name} ${p.category}`)
-          .join(' ');
+      const scoredList = scoredProducts
+        .map(p => ({
+          product: p,
+          score: productScores.get(p._id) || 0
+        }))
+        .sort((a, b) => b.score - a.score);
+
+      const positiveScored = scoredList.filter(s => s.score > 0);
+      for (const { product, score } of positiveScored) {
+        const repeat = Math.min(Math.max(Math.round(score), 1), 6);
+        for (let i = 0; i < repeat; i++) {
+          interestText += `${product.name} ${product.category} `;
+        }
       }
 
-      // Step 5: Generate user vector
-      const userVector = await this.groq.generateEmbedding(interestText);
+      // Step 6: Generate user vector
+      const userVector = await this.groq.generateEmbedding(interestText.trim());
 
-      // Step 6: Get purchased products to filter out
-      const purchasedEvents = await UserEvent.find({ 
-        userId, 
-        eventType: 'purchase' 
+      // Step 7: Get purchased products to filter out
+      const purchasedEvents = await UserEvent.find({
+        userId,
+        eventType: 'purchase'
       });
       const purchasedIds = purchasedEvents.map(e => e.productId);
 
-      // Step 7: Search similar in Qdrant (fallback to trending if disabled)
+      // Step 8: Search similar in Qdrant (fallback to top scored if disabled)
+      let results = [];
       if (this.qdrant.disabled) {
-        return await this.getTrendingProducts(limit);
+        const topIds = positiveScored.map(s => s.product._id);
+        const fallback = await Product.find({ _id: { $in: topIds } }).limit(limit);
+        return fallback.map(p => ({
+          id: p._id,
+          name: p.name,
+          category: p.category,
+          price: p.price,
+          image: p.image || '🛒',
+          score: 0.5,
+          reason: this.getRecommendationReason(p.category, user?.preferences, scoredList)
+        }));
       }
 
-      let results = await this.qdrant.searchSimilar(userVector, limit * 2);
+      results = await this.qdrant.searchSimilar(userVector, limit * 2);
 
-      // Step 8: Filter and format
-      results = results
+      // Step 9: Popularity + trend boost
+      const candidateIds = results.map(r => r.id);
+      const { popularityMap, recentMap, maxPopularity, maxRecent } =
+        await this.getPopularityStats(candidateIds);
+
+      // Step 10: Filter, rank, and format
+      const ranked = results
         .filter(r => !purchasedIds.includes(r.id))
+        .filter(r => !negativeProducts.has(r.id))
+        .map(r => {
+          const pop = popularityMap.get(r.id) || 0;
+          const rec = recentMap.get(r.id) || 0;
+          const popNorm = maxPopularity > 0 ? pop / maxPopularity : 0;
+          const recNorm = maxRecent > 0 ? rec / maxRecent : 0;
+          const finalScore = r.score * (1 + popNorm * 0.2 + recNorm * 0.1);
+          return { ...r, finalScore };
+        })
+        .sort((a, b) => b.finalScore - a.finalScore)
         .slice(0, limit)
         .map(r => ({
           id: r.id,
@@ -388,23 +461,61 @@ class RecommendationEngine {
           category: r.payload.category,
           price: r.payload.price,
           image: r.payload.image || '🛒',
-          score: r.score,
-          reason: this.getRecommendationReason(r.payload.category, user?.preferences)
+          score: r.finalScore,
+          reason: this.getRecommendationReason(r.payload.category, user?.preferences, scoredList)
         }));
 
-      return results;
+      return ranked;
     } catch (error) {
       console.error('❌ Recommendation error:', error.message);
       return [];
     }
   }
 
-  // Get trending products (cold start)
+  // Popular products (all time)
+  async getPopularProducts(limit = 10) {
+    try {
+      const popular = await UserEvent.aggregate([
+        { $group: { _id: '$productId', count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: limit }
+      ]);
+
+      if (popular.length === 0) {
+        const products = await Product.find().sort({ createdAt: -1 }).limit(limit);
+        return products.map(p => ({
+          id: p._id,
+          name: p.name,
+          category: p.category,
+          price: p.price,
+          image: p.image || '🛒',
+          score: 0.5,
+          reason: 'Popular right now'
+        }));
+      }
+
+      const productIds = popular.map(t => t._id);
+      const products = await Product.find({ _id: { $in: productIds } });
+      
+      return products.map(p => ({
+        id: p._id,
+        name: p.name,
+        category: p.category,
+        price: p.price,
+        image: p.image || '🛒',
+        score: popular.find(t => t._id === p._id)?.count || 0,
+        reason: 'Popular right now'
+      }));
+    } catch (error) {
+      console.error('❌ Popular error:', error.message);
+      return [];
+    }
+  }
+
+  // Trending products (last 24h)
   async getTrendingProducts(limit = 10) {
     try {
-      // Simple: most viewed products in last 24h
       const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-      
       const trending = await UserEvent.aggregate([
         { $match: { timestamp: { $gte: oneDayAgo } } },
         { $group: { _id: '$productId', count: { $sum: 1 } } },
@@ -413,22 +524,11 @@ class RecommendationEngine {
       ]);
 
       if (trending.length === 0) {
-        // Fallback to random products
-        const products = await Product.find().limit(limit);
-        return products.map(p => ({
-          id: p._id,
-          name: p.name,
-          category: p.category,
-          price: p.price,
-          image: p.image || '🛒',
-          score: 0.5,
-          reason: 'Trending now'
-        }));
+        return await this.getPopularProducts(limit);
       }
 
       const productIds = trending.map(t => t._id);
       const products = await Product.find({ _id: { $in: productIds } });
-      
       return products.map(p => ({
         id: p._id,
         name: p.name,
@@ -444,13 +544,47 @@ class RecommendationEngine {
     }
   }
 
+  async getPopularityStats(productIds = []) {
+    if (productIds.length === 0) {
+      return {
+        popularityMap: new Map(),
+        recentMap: new Map(),
+        maxPopularity: 0,
+        maxRecent: 0
+      };
+    }
+
+    const popularityAgg = await UserEvent.aggregate([
+      { $match: { productId: { $in: productIds } } },
+      { $group: { _id: '$productId', count: { $sum: 1 } } }
+    ]);
+
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const recentAgg = await UserEvent.aggregate([
+      { $match: { productId: { $in: productIds }, timestamp: { $gte: oneDayAgo } } },
+      { $group: { _id: '$productId', count: { $sum: 1 } } }
+    ]);
+
+    const popularityMap = new Map(popularityAgg.map(p => [p._id, p.count]));
+    const recentMap = new Map(recentAgg.map(p => [p._id, p.count]));
+
+    const maxPopularity = popularityAgg.reduce((m, p) => Math.max(m, p.count), 0);
+    const maxRecent = recentAgg.reduce((m, p) => Math.max(m, p.count), 0);
+
+    return { popularityMap, recentMap, maxPopularity, maxRecent };
+  }
+
   // Generate reason for recommendation
-  getRecommendationReason(category, preferences = []) {
+  getRecommendationReason(category, preferences = [], scoredList = []) {
     const prefSet = new Set(
       preferences.map(p => String(p).toLowerCase())
     );
     if (prefSet.has(String(category).toLowerCase())) {
       return `Based on your preference for ${category}`;
+    }
+    const topCategory = scoredList.find(s => s.product.category === category);
+    if (topCategory) {
+      return `Recommended because you interacted with ${category} products`;
     }
     return `Recommended based on your activity`;
   }
@@ -741,7 +875,7 @@ app.get('/api/categories', async (req, res) => {
 // Track user event
 app.post('/api/events', async (req, res) => {
   try {
-    const { userId, productId, eventType, quantity } = req.body;
+    const { userId, productId, eventType, quantity, rating, sentiment } = req.body;
 
     // Validation
     if (!userId || !productId || !eventType) {
@@ -751,7 +885,7 @@ app.post('/api/events', async (req, res) => {
       });
     }
 
-    const validEvents = ['click', 'cart', 'purchase', 'view'];
+    const validEvents = ['product_click', 'add_to_cart', 'purchase', 'review'];
     if (!validEvents.includes(eventType)) {
       return res.status(400).json({ 
         success: false, 
@@ -769,11 +903,30 @@ app.post('/api/events', async (req, res) => {
     }
 
     // Create event
+    let finalRating;
+    let finalSentiment;
+
+    if (eventType === 'review') {
+      if (typeof rating !== 'number' || rating < 1 || rating > 5) {
+        return res.status(400).json({
+          success: false,
+          message: 'Review rating must be a number between 1 and 5'
+        });
+      }
+
+      finalRating = rating;
+      finalSentiment =
+        sentiment ||
+        (rating >= 4 ? 'positive' : rating <= 2 ? 'negative' : 'neutral');
+    }
+
     const event = new UserEvent({
       userId,
       productId,
       eventType,
       quantity: quantity || 1,
+      rating: finalRating,
+      sentiment: finalSentiment,
       timestamp: new Date()
     });
 
@@ -786,6 +939,8 @@ app.post('/api/events', async (req, res) => {
         userId: event.userId,
         productId: event.productId,
         eventType: event.eventType,
+        rating: event.rating,
+        sentiment: event.sentiment,
         timestamp: event.timestamp
       }
     });
@@ -864,28 +1019,62 @@ app.get('/api/recommendations/:userId', async (req, res) => {
     // Get user for profile panel
     const user = await User.findById(userId);
     
-    // Get detected interests from user events
+    // Get detected interests from user events (weighted)
     const events = await UserEvent.find({ userId })
       .sort({ timestamp: -1 })
-      .limit(50);
+      .limit(20);
     
-    const productIds = [...new Set(events.map(e => e.productId))];
+    const productScores = new Map();
+    for (const event of events) {
+      let score = 0;
+      if (event.eventType === 'review') {
+        const rating = event.rating || 0;
+        const sentiment =
+          event.sentiment ||
+          (rating >= 4 ? 'positive' : rating <= 2 ? 'negative' : 'neutral');
+        score =
+          sentiment === 'positive'
+            ? EVENT_WEIGHTS.review_positive
+            : sentiment === 'negative'
+            ? EVENT_WEIGHTS.review_negative
+            : 0;
+      } else {
+        score = EVENT_WEIGHTS[event.eventType] || 0;
+      }
+      const prev = productScores.get(event.productId) || 0;
+      productScores.set(event.productId, prev + score);
+    }
+
+    const productIds = [...productScores.keys()];
     const products = await Product.find({ _id: { $in: productIds } });
-    
-    // Count category frequencies
-    const categoryCount = {};
-    products.forEach(p => {
-      categoryCount[p.category] = (categoryCount[p.category] || 0) + 1;
+
+    const scoredProducts = products
+      .map(p => ({ product: p, score: productScores.get(p._id) || 0 }))
+      .sort((a, b) => b.score - a.score);
+
+    const topProducts = scoredProducts
+      .filter(s => s.score > 0)
+      .slice(0, 5)
+      .map(s => s.product.name);
+
+    const categoryScores = {};
+    scoredProducts.forEach(({ product, score }) => {
+      categoryScores[product.category] =
+        (categoryScores[product.category] || 0) + score;
     });
 
-    // Get top interests
-    const interests = Object.entries(categoryCount)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 3)
-      .map(([category]) => ({
-        name: category,
-        confidence: Math.min(0.5 + (categoryCount[category] * 0.1), 0.95)
-      }));
+    const categoryEntries = Object.entries(categoryScores).sort(
+      (a, b) => b[1] - a[1]
+    );
+    const maxCategoryScore = categoryEntries.reduce(
+      (m, [, score]) => Math.max(m, score),
+      0
+    );
+
+    const interests = categoryEntries.slice(0, 3).map(([category, score]) => ({
+      name: category,
+      confidence: maxCategoryScore > 0 ? Math.min(score / maxCategoryScore, 0.99) : 0.5
+    }));
 
     res.json({
       success: true,
@@ -895,6 +1084,7 @@ app.get('/api/recommendations/:userId', async (req, res) => {
         name: user?.name || 'User',
         preferences: user?.preferences || [],
         interests,
+        topProducts,
         eventsCount: events.length
       }
     });
@@ -960,12 +1150,13 @@ app.post('/api/seed', async (req, res) => {
 
     // Seed events
     await UserEvent.insertMany([
-      { userId: 'user_john', productId: 'prod_1', eventType: 'click' },
-      { userId: 'user_john', productId: 'prod_2', eventType: 'click' },
-      { userId: 'user_john', productId: 'prod_1', eventType: 'cart' },
-      { userId: 'user_sarah', productId: 'prod_10', eventType: 'click' },
-      { userId: 'user_sarah', productId: 'prod_4', eventType: 'click' },
-      { userId: 'user_sarah', productId: 'prod_10', eventType: 'cart' }
+      { userId: 'user_john', productId: 'prod_1', eventType: 'product_click' },
+      { userId: 'user_john', productId: 'prod_2', eventType: 'product_click' },
+      { userId: 'user_john', productId: 'prod_1', eventType: 'add_to_cart' },
+      { userId: 'user_john', productId: 'prod_1', eventType: 'review', rating: 5, sentiment: 'positive' },
+      { userId: 'user_sarah', productId: 'prod_10', eventType: 'product_click' },
+      { userId: 'user_sarah', productId: 'prod_4', eventType: 'product_click' },
+      { userId: 'user_sarah', productId: 'prod_10', eventType: 'add_to_cart' }
     ]);
 
     // Index products in Qdrant
