@@ -13,7 +13,11 @@ const useShop = () => {
   return context;
 };
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
+const API_BASE =
+  import.meta.env.VITE_API_BASE_URL ||
+  (window.location.hostname === 'localhost'
+    ? '/api'
+    : 'https://shopiq-5lqm.onrender.com/api');
 
 const isImageUrl = (value) =>
   typeof value === 'string' && (value.startsWith('http') || value.startsWith('data:'));
