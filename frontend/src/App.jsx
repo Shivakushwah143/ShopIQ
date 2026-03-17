@@ -19,6 +19,19 @@ const API_BASE =
     ? '/api'
     : 'https://shopiq-5lqm.onrender.com/api');
 
+const API_FALLBACK_BASE =
+  API_BASE.endsWith('/api') ? API_BASE.replace(/\/api$/, '') : API_BASE;
+
+const apiFetch = async (path, options) => {
+  const url = `${API_BASE}${path}`;
+  const res = await fetch(url, options);
+  if (res.status === 404 && API_FALLBACK_BASE !== API_BASE) {
+    const fallbackUrl = `${API_FALLBACK_BASE}${path}`;
+    return fetch(fallbackUrl, options);
+  }
+  return res;
+};
+
 const isImageUrl = (value) =>
   typeof value === 'string' && (value.startsWith('http') || value.startsWith('data:'));
 
@@ -62,7 +75,7 @@ const App = () => {
 
   const fetchProducts = async () => {
     try {
-      const res = await fetch(`${API_BASE}/products`);
+      const res = await apiFetch('/products');
       const data = await res.json();
       setProducts(data.products || []);
     } catch (error) {
@@ -72,7 +85,7 @@ const App = () => {
 
   const fetchCategories = async () => {
     try {
-      const res = await fetch(`${API_BASE}/categories`);
+      const res = await apiFetch('/categories');
       const data = await res.json();
       setCategories(data.categories || []);
     } catch (error) {
@@ -83,7 +96,7 @@ const App = () => {
   const fetchRecommendations = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/recommendations/${currentUser}`);
+      const res = await apiFetch(`/recommendations/${currentUser}`);
       const data = await res.json();
       setRecommendations(data.recommendations || []);
     } catch (error) {
@@ -95,7 +108,7 @@ const App = () => {
 
   const fetchUserProfile = async () => {
     try {
-      const res = await fetch(`${API_BASE}/recommendations/${currentUser}`);
+      const res = await apiFetch(`/recommendations/${currentUser}`);
       const data = await res.json();
       setUserProfile(data.userProfile);
     } catch (error) {
@@ -105,7 +118,7 @@ const App = () => {
 
   const trackEvent = async (productId, eventType) => {
     try {
-      await fetch(`${API_BASE}/events`, {
+      await apiFetch('/events', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -133,7 +146,7 @@ const App = () => {
   const sendReview = async (productId, rating) => {
     try {
       const sentiment = rating >= 4 ? 'positive' : rating <= 2 ? 'negative' : 'neutral';
-      await fetch(`${API_BASE}/events`, {
+      await apiFetch('/events', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1155,7 +1168,7 @@ const AuthModal = ({ mode, setMode, onClose, onSuccess }) => {
     
     if (mode === 'signup') {
       try {
-        const res = await fetch(`${API_BASE}/auth/signup`, {
+        const res = await apiFetch('/auth/signup', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -1177,7 +1190,7 @@ const AuthModal = ({ mode, setMode, onClose, onSuccess }) => {
     } else {
       // Login
       try {
-        const res = await fetch(`${API_BASE}/auth/login`, {
+        const res = await apiFetch('/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
